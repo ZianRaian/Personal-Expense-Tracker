@@ -90,7 +90,43 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    initials = "".join(w[0].upper() for w in session.get("user_name", "U").split()[:2])
+
+    user = {
+        "name":         session.get("user_name", "User"),
+        "email":        "demo@spendly.com",
+        "initials":     initials,
+        "member_since": "January 2025",
+    }
+
+    stats = {
+        "total_spent":       "৳18,450",
+        "transaction_count": 24,
+        "top_category":      "Food",
+    }
+
+    transactions = [
+        {"date": "May 10, 2026", "description": "Grocery run",     "category": "Food",      "amount": "৳1,200"},
+        {"date": "May 8, 2026",  "description": "Uber ride",        "category": "Transport", "amount": "৳350"},
+        {"date": "May 5, 2026",  "description": "Electricity bill", "category": "Bills",     "amount": "৳2,800"},
+        {"date": "May 3, 2026",  "description": "Dinner out",       "category": "Food",      "amount": "৳950"},
+        {"date": "Apr 28, 2026", "description": "Pharmacy",         "category": "Health",    "amount": "৳600"},
+    ]
+
+    categories = [
+        {"name": "Food",      "amount": "৳6,200", "pct": 34},
+        {"name": "Bills",     "amount": "৳5,100", "pct": 28},
+        {"name": "Transport", "amount": "৳3,400", "pct": 18},
+        {"name": "Health",    "amount": "৳2,100", "pct": 11},
+        {"name": "Other",     "amount": "৳1,650", "pct":  9},
+    ]
+
+    return render_template("profile.html",
+        user=user, stats=stats,
+        transactions=transactions, categories=categories)
 
 
 @app.route("/expenses/add")
