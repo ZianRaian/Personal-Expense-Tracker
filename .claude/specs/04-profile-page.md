@@ -1,54 +1,55 @@
-# Spec: Profile Page
+# Spec: Profile Page Design
 
 ## Overview
-This feature replaces the `/profile` stub with a fully designed profile page showing static, hardcoded data. The goal is to establish the complete UI layout — user info card, transaction history table, summary stats, and category breakdown — before any real database queries are wired up in Step 5. Building the UI first lets the team validate the design in isolation and ensures the templates are ready for the backend-connection step.
+This step upgrades the basic Step 04 profile layout into a polished, production-grade design using the "Refined Financial Ledger" aesthetic direction. The static hardcoded data from Step 04 remains unchanged — this step is purely a visual redesign. Key changes: a two-column lower grid (transactions left, category breakdown sidebar right), an avatar with a faint ring halo, stat cards with animated accent left-borders, breakdown bars that animate in on page load via CSS keyframes, and a subtle radial-gradient wash in the hero corner. The goal is to lock in a premium visual design before wiring up live data in Step 06.
 
 ## Depends on
-- Step 1: Database setup (schema must exist)
-- Step 2: Registration (user accounts must be creatable)
-- Step 3: Login + Logout (session must be set; `/profile` must be a protected route)
+- Step 04: Profile page (template and route must already exist)
 
 ## Routes
-- GET /profile — render the profile page — logged-in only (redirect to /login if not authenticated)
+No new routes.
 
 ## Database changes
-No database changes. The existing `users` and `expenses` tables are sufficient.
+No database changes.
 
 ## Templates
-- Create: `templates/profile.html` — full profile page extending `base.html`; contains four sections:
-  1. **User info card** — avatar initials, name, email, member-since date (all hardcoded)
-  2. **Summary stats row** — total spent, number of transactions, top category (hardcoded)
-  3. **Transaction history table** — list of recent expenses with date, description, category badge, amount (hardcoded rows)
-  4. **Category breakdown** — per-category totals displayed as a simple list or progress-bar rows (hardcoded)
+- **Modify:** `templates/profile.html` — full redesign of the page structure and class names:
+  - Hero: add `.profile-eyebrow` label, `.avatar-wrap` + `.avatar-ring` halo, `.profile-meta` combining email + member-since
+  - Stats: keep 3-card row; add `.stat-card--primary` on Total Spent, add `.stat-value--word` variant for text values
+  - Lower layout: replace two stacked `.profile-section` cards with `.profile-columns` two-column grid
+  - Breakdown: add `--delay` CSS variable to each `.breakdown-bar` for staggered animation; show `breakdown-figures` (amount + pct) side by side
 
 ## Files to change
-- `app.py` — replace the `/profile` stub with a real view function that:
-  - Redirects unauthenticated users to `/login`
-  - Passes hardcoded context variables to `profile.html`
+- `templates/profile.html` — restructure HTML with new class names (see design output above)
+- `static/css/style.css` — replace existing profile CSS block with redesigned version
 
 ## Files to create
-- `templates/profile.html`
+No new files.
 
 ## New dependencies
 No new dependencies.
 
 ## Rules for implementation
-- No SQLAlchemy or ORMs — use raw sqlite3 via `get_db()` if any DB call is ever needed
+- No SQLAlchemy or ORMs
 - Parameterised queries only — never string-format SQL
-- Passwords hashed with werkzeug (no changes to auth in this step)
-- Use CSS variables — never hardcode hex values
+- Passwords hashed with werkzeug (no auth changes in this step)
+- Use CSS variables — never hardcode hex values in `profile.html`
 - All templates extend `base.html`
-- No inline styles
-- Authentication guard: check `session.get("user_id")`; if absent, `redirect(url_for("login"))`
-- All data passed to the template must be hardcoded Python dicts/lists in `app.py` — no DB queries in this step
-- Category badges must use a CSS class, not inline colour styles
+- No inline styles in HTML except CSS custom properties (`--bar-w`, `--delay`) on breakdown bars
+- Category badges, dots, and bars must use CSS class, never inline colour
+- Breakdown bars must start at `width: 0` and animate to `var(--bar-w)` via `@keyframes bar-fill`
+- Two-column `.profile-columns` grid collapses to single column at ≤ 900px
+- Stats row collapses to single column at ≤ 600px
+- `font-variant-numeric: tabular-nums` on all monetary and numeric values
 
 ## Definition of done
-- [ ] Visiting `/profile` without being logged in redirects to `/login`
 - [ ] Visiting `/profile` while logged in returns HTTP 200
-- [ ] The page displays a user info card with a name and email
-- [ ] The page displays at least three summary stat values (e.g. total spent, transaction count, top category)
-- [ ] The page displays a transaction history table with at least three hardcoded rows
-- [ ] The page displays a category breakdown section with at least three categories
-- [ ] The navbar shows the logged-in state (username + logout link)
-- [ ] No hex colour values appear in `profile.html` — only CSS variables
+- [ ] Hero section shows avatar circle with faint ring, eyebrow label, name, and combined email/member-since line
+- [ ] Stats row shows three cards; "Total Spent" card has green left border (`.stat-card--primary`)
+- [ ] At ≥ 901px viewport, transactions and category breakdown appear side by side in two columns
+- [ ] At ≤ 900px viewport, the two sections stack vertically
+- [ ] Breakdown bars animate from 0 to their target width on page load with staggered delay
+- [ ] Each breakdown row shows both the category amount and percentage on the same line
+- [ ] Transaction rows highlight on hover
+- [ ] No hex colour values appear in `profile.html`
+- [ ] Page is visually consistent with the existing Spendly design system (same fonts, same colour tokens)
