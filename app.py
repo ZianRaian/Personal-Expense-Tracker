@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from database.db import get_db, init_db, seed_db, get_user_by_email, create_user
+from database.db import (get_db, init_db, seed_db, get_user_by_email, create_user,
+                          get_user_by_id, get_expense_stats,
+                          get_recent_expenses, get_category_totals)
 
 app = Flask(__name__)
 app.secret_key = "spendly-dev-secret"
@@ -93,35 +95,53 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    initials = "".join(w[0].upper() for w in session.get("user_name", "U").split()[:2])
+    user_id = session["user_id"]
 
+    # ── SECTION A: USER ─────────────────────────────────────────────── #
+    db_user = get_user_by_id(user_id)
+    _month_names = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"]
+    _y, _m = db_user["created_at"][:7].split("-")
+    initials = "".join(w[0].upper() for w in db_user["name"].split()[:2])
     user = {
-        "name":         session.get("user_name", "User"),
-        "email":        "demo@spendly.com",
+        "name":         db_user["name"],
+        "email":        db_user["email"],
         "initials":     initials,
-        "member_since": "January 2025",
+        "member_since": f"{_month_names[int(_m)-1]} {_y}",
     }
 
+    # ── SECTION B: STATS ────────────────────────────────────────────── #
+    raw_stats = get_expense_stats(user_id)
     stats = {
-        "total_spent":       "৳18,450",
-        "transaction_count": 24,
-        "top_category":      "Food",
+        "total_spent":       f"৳{raw_stats['total_spent']:,.0f}",
+        "transaction_count": raw_stats["transaction_count"],
+        "top_category":      raw_stats["top_category"] or "—",
     }
 
+    # ── SECTION C: TRANSACTIONS ─────────────────────────────────────── #
+    _months = ["Jan","Feb","Mar","Apr","May","Jun",
+               "Jul","Aug","Sep","Oct","Nov","Dec"]
+    def _fmt_date(iso):
+        y, m, d = iso.split("-")
+        return f"{_months[int(m)-1]} {int(d)}, {y}"
     transactions = [
-        {"date": "May 10, 2026", "description": "Grocery run",     "category": "Food",      "amount": "৳1,200"},
-        {"date": "May 8, 2026",  "description": "Uber ride",        "category": "Transport", "amount": "৳350"},
-        {"date": "May 5, 2026",  "description": "Electricity bill", "category": "Bills",     "amount": "৳2,800"},
-        {"date": "May 3, 2026",  "description": "Dinner out",       "category": "Food",      "amount": "৳950"},
-        {"date": "Apr 28, 2026", "description": "Pharmacy",         "category": "Health",    "amount": "৳600"},
+        {
+            "date":        _fmt_date(row["date"]),
+            "description": row["description"] or "",
+            "category":    row["category"],
+            "amount":      f"৳{row['amount']:,.0f}",
+        }
+        for row in get_recent_expenses(user_id)
     ]
 
+    # ── SECTION D: CATEGORIES ───────────────────────────────────────── #
     categories = [
-        {"name": "Food",      "amount": "৳6,200", "pct": 34},
-        {"name": "Bills",     "amount": "৳5,100", "pct": 28},
-        {"name": "Transport", "amount": "৳3,400", "pct": 18},
-        {"name": "Health",    "amount": "৳2,100", "pct": 11},
-        {"name": "Other",     "amount": "৳1,650", "pct":  9},
+        {
+            "name":   cat["name"],
+            "amount": f"৳{cat['amount']:,.0f}",
+            "pct":    cat["pct"],
+        }
+        for cat in get_category_totals(user_id)
     ]
 
     return render_template("profile.html",
