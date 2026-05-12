@@ -83,3 +83,64 @@ def create_user(name, email, password_hash):
     user_id = cur.lastrowid
     conn.close()
     return user_id
+
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user
+
+
+def get_expense_stats(user_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt "
+        "FROM expenses WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()
+    top = conn.execute(
+        "SELECT category FROM expenses WHERE user_id = ? "
+        "GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    return {
+        "total_spent":       row["total"],
+        "transaction_count": row["cnt"],
+        "top_category":      top["category"] if top else None,
+    }
+
+
+def get_recent_expenses(user_id, limit=5):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC LIMIT ?",
+        (user_id, limit)
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_category_totals(user_id):
+    conn = get_db()
+    grand = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT category, SUM(amount) AS total FROM expenses "
+        "WHERE user_id = ? GROUP BY category ORDER BY total DESC",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    if not grand:
+        return []
+    return [
+        {
+            "name":   row["category"],
+            "amount": row["total"],
+            "pct":    round(row["total"] / grand * 100),
+        }
+        for row in rows
+    ]

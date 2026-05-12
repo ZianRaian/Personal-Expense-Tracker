@@ -827,6 +827,14 @@ a { color: inherit; text-decoration: none; }
 .cat-dot--health      { background: #6d28d9; }
 .cat-bar--health      { background: #6d28d9; }
 
+.cat-badge--entertainment { background: #fce7f3; color: #be185d; }
+.cat-dot--entertainment   { background: #be185d; }
+.cat-bar--entertainment   { background: #be185d; }
+
+.cat-badge--shopping  { background: #fef3c7; color: #b45309; }
+.cat-dot--shopping    { background: #b45309; }
+.cat-bar--shopping    { background: #b45309; }
+
 .cat-badge--other    { background: var(--paper-warm);     color: var(--ink-muted); }
 .cat-dot--other      { background: var(--ink-faint); }
 .cat-bar--other      { background: var(--ink-faint); }
