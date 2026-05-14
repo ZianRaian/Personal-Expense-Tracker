@@ -110,6 +110,18 @@ def get_user_by_id(user_id):
     return user
 
 
+def add_expense(user_id, amount, category, expense_date, description):
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+        (user_id, amount, category, expense_date, description),
+    )
+    conn.commit()
+    expense_id = cur.lastrowid
+    conn.close()
+    return expense_id
+
+
 def get_expense_stats(user_id, date_from=None, date_to=None):
     conn = get_db()
     clause, extra = _date_clause(date_from, date_to)
