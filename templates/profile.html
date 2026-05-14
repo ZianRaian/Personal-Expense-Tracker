@@ -5,6 +5,25 @@
 <div class="profile-page">
     <div class="profile-inner">
 
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <a href="?period=this_month"
+               class="filter-btn{% if active_period == 'this_month' %} filter-btn--active{% endif %}">This Month</a>
+            <a href="?period=last_3_months"
+               class="filter-btn{% if active_period == 'last_3_months' %} filter-btn--active{% endif %}">Last 3 Months</a>
+            <a href="?period=last_6_months"
+               class="filter-btn{% if active_period == 'last_6_months' %} filter-btn--active{% endif %}">Last 6 Months</a>
+            <a href="{{ url_for('profile') }}"
+               class="filter-btn{% if active_period == 'all_time' %} filter-btn--active{% endif %}">All Time</a>
+            <form class="filter-custom" method="GET" action="{{ url_for('profile') }}">
+                <input type="date" name="date_from" value="{{ filter_from }}" class="filter-date-input" required>
+                <span class="filter-date-sep">→</span>
+                <input type="date" name="date_to" value="{{ filter_to }}" class="filter-date-input" required>
+                <button type="submit"
+                        class="filter-btn{% if active_period == 'custom' %} filter-btn--active{% endif %}">Apply</button>
+            </form>
+        </div>
+
         <!-- Stats -->
         <div class="stats-row">
             <div class="stat-card stat-card--primary">

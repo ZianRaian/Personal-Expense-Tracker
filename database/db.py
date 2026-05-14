@@ -1,8 +1,26 @@
 import sqlite3
 import os
+from datetime import date, timedelta
 from werkzeug.security import generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "spendly.db")
+
+
+def _period_dates(period):
+    today = date.today()
+    if period == "this_month":
+        return today.replace(day=1).isoformat(), today.isoformat()
+    if period == "last_3_months":
+        return (today - timedelta(days=90)).isoformat(), today.isoformat()
+    if period == "last_6_months":
+        return (today - timedelta(days=180)).isoformat(), today.isoformat()
+    return None, None
+
+
+def _date_clause(date_from, date_to):
+    if date_from and date_to:
+        return " AND date BETWEEN ? AND ?", [date_from, date_to]
+    return "", []
 
 
 def get_db():
@@ -92,17 +110,19 @@ def get_user_by_id(user_id):
     return user
 
 
-def get_expense_stats(user_id):
+def get_expense_stats(user_id, date_from=None, date_to=None):
     conn = get_db()
+    clause, extra = _date_clause(date_from, date_to)
+    params = [user_id] + extra
     row = conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt "
-        "FROM expenses WHERE user_id = ?",
-        (user_id,)
+        f"SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt "
+        f"FROM expenses WHERE user_id = ?{clause}",
+        params
     ).fetchone()
     top = conn.execute(
-        "SELECT category FROM expenses WHERE user_id = ? "
+        f"SELECT category FROM expenses WHERE user_id = ?{clause} "
         "GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-        (user_id,)
+        params
     ).fetchone()
     conn.close()
     return {
@@ -112,26 +132,30 @@ def get_expense_stats(user_id):
     }
 
 
-def get_recent_expenses(user_id, limit=5):
+def get_recent_expenses(user_id, limit=5, date_from=None, date_to=None):
     conn = get_db()
+    clause, extra = _date_clause(date_from, date_to)
+    params = [user_id] + extra + [limit]
     rows = conn.execute(
-        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC LIMIT ?",
-        (user_id, limit)
+        f"SELECT * FROM expenses WHERE user_id = ?{clause} ORDER BY date DESC LIMIT ?",
+        params
     ).fetchall()
     conn.close()
     return rows
 
 
-def get_category_totals(user_id):
+def get_category_totals(user_id, date_from=None, date_to=None):
     conn = get_db()
+    clause, extra = _date_clause(date_from, date_to)
+    params = [user_id] + extra
     grand = conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
-        (user_id,)
+        f"SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?{clause}",
+        params
     ).fetchone()[0]
     rows = conn.execute(
-        "SELECT category, SUM(amount) AS total FROM expenses "
-        "WHERE user_id = ? GROUP BY category ORDER BY total DESC",
-        (user_id,)
+        f"SELECT category, SUM(amount) AS total FROM expenses "
+        f"WHERE user_id = ?{clause} GROUP BY category ORDER BY total DESC",
+        params
     ).fetchall()
     conn.close()
     if not grand:
