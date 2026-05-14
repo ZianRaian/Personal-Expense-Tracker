@@ -1,8 +1,30 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+import re
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import date
 from database.db import (get_db, init_db, seed_db, get_user_by_email, create_user,
                           get_user_by_id, get_expense_stats,
-                          get_recent_expenses, get_category_totals)
+                          get_recent_expenses, get_category_totals, _period_dates)
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+_MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun",
+                 "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+
+def _valid_date(s):
+    if not _DATE_RE.match(s):
+        return False
+    try:
+        date.fromisoformat(s)
+        return True
+    except ValueError:
+        return False
+
+
+def _fmt_date(iso):
+    y, m, d = iso.split("-")
+    return f"{_MONTHS_SHORT[int(m)-1]} {int(d)}, {y}"
 
 app = Flask(__name__)
 app.secret_key = "spendly-dev-secret"
@@ -97,6 +119,21 @@ def profile():
 
     user_id = session["user_id"]
 
+    custom_from = request.args.get("date_from", "").strip()
+    custom_to   = request.args.get("date_to", "").strip()
+
+    if custom_from and custom_to:
+        if not (_valid_date(custom_from) and _valid_date(custom_to)):
+            abort(400)
+        if custom_from > custom_to:
+            abort(400)
+        date_from, date_to = custom_from, custom_to
+        period = "custom"
+    else:
+        period = request.args.get("period", "all_time")
+        date_from, date_to = _period_dates(period)
+        custom_from = custom_to = ""
+
     # ── SECTION A: USER ─────────────────────────────────────────────── #
     db_user = get_user_by_id(user_id)
     _month_names = ["January","February","March","April","May","June",
@@ -111,7 +148,7 @@ def profile():
     }
 
     # ── SECTION B: STATS ────────────────────────────────────────────── #
-    raw_stats = get_expense_stats(user_id)
+    raw_stats = get_expense_stats(user_id, date_from=date_from, date_to=date_to)
     stats = {
         "total_spent":       f"৳{raw_stats['total_spent']:,.0f}",
         "transaction_count": raw_stats["transaction_count"],
@@ -119,11 +156,6 @@ def profile():
     }
 
     # ── SECTION C: TRANSACTIONS ─────────────────────────────────────── #
-    _months = ["Jan","Feb","Mar","Apr","May","Jun",
-               "Jul","Aug","Sep","Oct","Nov","Dec"]
-    def _fmt_date(iso):
-        y, m, d = iso.split("-")
-        return f"{_months[int(m)-1]} {int(d)}, {y}"
     transactions = [
         {
             "date":        _fmt_date(row["date"]),
@@ -131,7 +163,7 @@ def profile():
             "category":    row["category"],
             "amount":      f"৳{row['amount']:,.0f}",
         }
-        for row in get_recent_expenses(user_id)
+        for row in get_recent_expenses(user_id, date_from=date_from, date_to=date_to)
     ]
 
     # ── SECTION D: CATEGORIES ───────────────────────────────────────── #
@@ -141,12 +173,14 @@ def profile():
             "amount": f"৳{cat['amount']:,.0f}",
             "pct":    cat["pct"],
         }
-        for cat in get_category_totals(user_id)
+        for cat in get_category_totals(user_id, date_from=date_from, date_to=date_to)
     ]
 
     return render_template("profile.html",
         user=user, stats=stats,
-        transactions=transactions, categories=categories)
+        transactions=transactions, categories=categories,
+        active_period=period,
+        filter_from=custom_from, filter_to=custom_to)
 
 
 @app.route("/expenses/add")

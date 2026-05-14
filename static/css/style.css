@@ -651,6 +651,68 @@ a { color: inherit; text-decoration: none; }
     gap: 1.75rem;
 }
 
+/* Filter bar */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-btn {
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--paper-card);
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.filter-btn--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.filter-btn--active:hover {
+    color: #fff;
+}
+
+.filter-custom {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.filter-date-input {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--paper-card);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.filter-date-input:focus {
+    border-color: var(--accent);
+}
+
+.filter-date-sep {
+    color: var(--ink-muted);
+    font-size: 0.8rem;
+}
+
 /* Stats row */
 .stats-row {
     display: grid;
