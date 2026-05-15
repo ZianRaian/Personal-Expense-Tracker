@@ -4,9 +4,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from database.db import (get_db, init_db, seed_db, get_user_by_email, create_user,
                           get_user_by_id, get_expense_stats,
-                          get_recent_expenses, get_category_totals, _period_dates)
+                          get_recent_expenses, get_category_totals, _period_dates,
+                          add_expense as db_add_expense)
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
 
 _MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun",
                  "Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -190,9 +193,53 @@ def analytics():
     return render_template("analytics.html")
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        return render_template("add_expense.html",
+            categories=CATEGORIES,
+            today=date.today().isoformat(),
+            form={})
+
+    amount_raw  = request.form.get("amount", "").strip()
+    category    = request.form.get("category", "")
+    date_raw    = request.form.get("date", "").strip()
+    description = request.form.get("description", "").strip()
+
+    def re_render(error):
+        return render_template("add_expense.html",
+            categories=CATEGORIES,
+            today=date.today().isoformat(),
+            error=error,
+            form={"amount": amount_raw, "category": category,
+                  "date": date_raw, "description": description})
+
+    if not amount_raw:
+        return re_render("Amount is required.")
+    try:
+        amount = float(amount_raw)
+        if amount <= 0:
+            return re_render("Amount must be greater than zero.")
+    except ValueError:
+        return re_render("Amount must be a valid number.")
+
+    if category not in CATEGORIES:
+        return re_render("Please select a valid category.")
+
+    if not date_raw:
+        return re_render("Date is required.")
+    if not _valid_date(date_raw):
+        return re_render("Please enter a valid date.")
+
+    if len(description) > 200:
+        return re_render("Description must be 200 characters or fewer.")
+
+    db_add_expense(session["user_id"], amount, category, date_raw, description or None)
+    flash("Expense added.", "success")
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")
